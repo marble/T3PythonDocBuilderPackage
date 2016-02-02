@@ -4,7 +4,10 @@ TYPO3 Python Doc Builder: t3pdb_sxw2html.py
 
 :author: Martin Bless
 :email:  martin@mbless.de
-:date:   2012-09-03, 2013-08-02
+:date:   2012-09-03, 2013-08-02, 2016-02-02
+
+.. default-role:: code
+.. highlight:: bash
 
 
 What does it do?
@@ -19,25 +22,25 @@ How to
 ======
 
 - To run this locally on your personal machine you have to install
-  ((some software)): http://wiki.typo3.org/Rendering_reST
+  some software: http://mbless.de/blog/2015/01/26/sphinx-doc-installation-steps.html
 
-- Get T3PythonDocBuilderPackage from git://git.typo3.org/Documentation/RestTools.git
+- Get the T3PythonDocBuilderPackage from https://github.com/marble/T3PythonDocBuilderPackage
 
-- Goto the T3PythonDocBuilder folder::
+- Goto the `t3pythondocbuilder` folder::
 
-    $ cd ((...)) T3PythonDocBuilderPackage/src/T3PythonDocBuilder
+    $ cd ./T3PythonDocBuilderPackage/t3pythondocbuilder
 
-- Provide the path to an OpenOffice manual::
+- Specify the path to an OpenOffice manual::
 
     $ infile=~/example_manual.sxw
 
-- Provide the path to a temp folder for temporary file storage::
+- Specify the path to a temp folder for temporary file storage::
 
     $ tempdir=~/temp
 
 - Run the application::
 
-    python  t3pdb_sxw2html.py   $infile $tempdir
+    $ python  t3pdb_sxw2html.py   $infile $tempdir
 
 
 What you should get
@@ -45,42 +48,38 @@ What you should get
 
 $tempdir/t3pdb
 --------------
-A newly created folder containing all output. The application will
-remove the complete folder 't3pdb' the next time you are running it
+A newly created folder containing all temporary and final output. The application will
+remove the complete folder 't3pdb' the next time you run it
 with the same $tempdir parameter.
 
 
 $tempdir/t3pdb/*
 ----------------
-=================  =====================================
-file               description
-=================  =====================================
-manual.html        saved by OpenOffice as HTML
-manual.dl.rst      single ReST file using "definition list" markup
-manual.t3flt.rst   single ReST file using "t3-field-list-table" directive for tables
-manual.flt.rst     single ReST file using "field-list-table" directive for tables (deprecated)
-manual.dl.html     single HTML file renderd by Docutils from manual.dl.rst
-manual.t3flt.html  single HTML file renderd by Docutils from manual.t3flt.rst
-manual.flt.html    single HTML file renderd by Docutils from manual.flt.rst (deprecated)
-manual-<images>    written by OpenOffice
-=================  =====================================
+==== ======================= =====================================
+step file                    description
+==== ======================= =====================================
+1    manual-<images>         written by OpenOffice or by inline to file dumper
+1    manual.html             saved by OpenOffice as HTML
+2    manual.dl.inline.txt    ReST, may still contain inline images
+2    manual.t3flt.inline.txt ReST, may still contain inline images
+3    manual.dl.rst           single ReST file using "definition list" markup
+3    manual.t3flt.rst        single ReST file using "t3-field-list-table" directive for tables
+4    manual.dl.html          single HTML file renderd by Docutils from manual.dl.rst
+4    manual.t3flt.html       single HTML file renderd by Docutils from manual.t3flt.rst
+==== ======================= =====================================
 
 
 $tempdir/t3pdb/Documentation
 ----------------------------
 
 This is a complete Sphinx Documentation project in TYPO3-style!
+Take this folder as a starter for your real documentation project.
 
 
 $tempdir/t3pdb/Documentation/_make
 ----------------------------------
 
-Windows:
-   Click "make-html.bat" to render the Sphinx project to using the
-   'typo3sphinx' theme.
-
-Linux/Mac:
-   do ``make html``
+Run `make html` to generate your ReST source as HTML in TYPO3 style.
 
 
 $tempdir/t3pdb/Documentation/_make/_not_versioned
@@ -141,6 +140,8 @@ Temporary files of an intermediate step. Can be removed.
 2013-08-02, new: Convert *.gif to *.png
 ---------------------------------------
 
+*2016-02-02 This step is deaactivated!*
+
 Images of the OpenOffice document typically have names like
 :file:`manual_html_11cdfe72.gif`. Since GIF files are not garanteed to
 work in Latex they are now converted to PNG and saved additionally as
@@ -162,6 +163,5 @@ should be ok to remove them since they are not being referenced.
    TYPO3 Docs server.
 
 
-
-((to be continued))
+End of README.
 
