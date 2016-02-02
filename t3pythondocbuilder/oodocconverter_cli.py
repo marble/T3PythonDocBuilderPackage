@@ -1,6 +1,20 @@
+#! /usr/bin/env python2
+
+from __future__ import print_function, absolute_import
+
 import os
 import shutil
 import subprocess
+
+
+POSSIBLE_OPENOFFICE_EXECUTABLES = [
+    'libreoffice',
+    '/usr/bin/libreoffice',
+    'soffice',
+    '/usr/bin/soffice',
+    'soffice.exe'
+]
+
 
 def main(f0path, f2path):
 
@@ -27,33 +41,31 @@ def main(f0path, f2path):
     f1dir, f1name = os.path.split(f1path)
     f1stem, f1ext = os.path.splitext(f1name)
 
-    # still untested! 'soffice' must be in the path
-    cmd = ' '.join([
-        'soffice',
+    retCode, msg = 1, "Cannot convert '%s' to '%s'" % (f0name, f2name)
+    cmd_template = ' '.join([
+        '%(executable)s',
         '--headless',
-        '-convert-to html',
-        '-outdir', f2dir,
+        '--convert-to html',
+        '--outdir', f2dir,
         f1path,
         ])
-
-    subprocess.call(cmd, shell=True)
-    if os.path.exists(f2path):
-        retCode, msg = 0, 'ok'
-    else:
-        retCode, msg = 1, "Could not convert '%s' to '%s' by command '%s'" % (
-            f0name, f2name, cmd)
+    for executable in POSSIBLE_OPENOFFICE_EXECUTABLES:
+        cmd = cmd_template % {'executable':executable}
+        retCode = subprocess.call(cmd, shell=True)
+        if os.path.exists(f2path):
+            retCode, msg = 0, 'ok'
+            break
     return retCode, msg
-
 
 
 if __name__ == "__main__":
     from sys import argv, exit
 
     if len(argv) < 3 or len(argv) > 3:
-        print "USAGE: python %s <input-file> <output-file>" % argv[0]
+        print("USAGE: python %s <input-file> <output-file>" % argv[0])
         exit(255)
     if not os.path.isfile(argv[1]):
-        print "no such input file: '%s'" % argv[1]
+        print("no such input file: '%s'" % argv[1])
         exit(1)
 
     retCode, msg = main(argv[1], argv[2])
