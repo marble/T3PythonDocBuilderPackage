@@ -1,5 +1,5 @@
 # sclice_to_numbered_files.py
-# mb, 2012-05-21, 2012-05-30, 2013-05-25
+# mb, 2012-05-21, 2012-05-30, 2013-05-25, 2016-01-30
 
 import codecs
 import os
@@ -61,20 +61,20 @@ def main(f1path, destdir):
     toctree0 = '\n'.join([
         '',
         '.. toctree::',
-        '   :maxdepth: 5',
-        '   :titlesonly:',
-        '   :glob:',
+        # '   :maxdepth: 5',
+        # '   :titlesonly:',
+        # '   :glob:',
         '',
         '   %s',
         ''
         ])
     toctree = toctree0 % '*'
 
-
     f1 = codecs.open(f1path, 'r', 'utf-8-sig')
     f2path = ospj(destdir, STARTNAME) + rstfileext
     f2 = codecs.open(f2path, 'w', 'utf-8-sig')
-    f2.write('.. include:: %s\n\n' % fnameimages)
+    f2.write(u'.. include:: Includes.txt\n')
+    f2.write(u'.. include:: %s\n\n' % fnameimages)
     lines = []
     for line in f1:
         if line.startswith(CUTTER_MARK_IMAGES):
@@ -89,7 +89,6 @@ def main(f1path, destdir):
             hot = hot and (lines[2].rstrip('\r\n') == (lines[2][0] * len(lines[2].rstrip('\r\n'))))
 
             if hot:
-                # switch to new file
                 underliner = lines[2][0]
                 p = section_underliners.find(underliner)
                 if p > -1 and p < depth:
@@ -99,7 +98,6 @@ def main(f1path, destdir):
                         f2.write(toctree)
                     if not f2 is sys.stdout:
                         f2.close()
-
 
                     levels[p] += 1
                     for i in range(p+1, depth+1):
@@ -114,17 +112,11 @@ def main(f1path, destdir):
                     if not ospe(curdestdir):
                         os.makedirs(curdestdir)
                     f2 = codecs.open(ospj(curdestdir, f2name) + rstfileext, 'w', 'utf-8-sig')
-
-                    f2.write(SNIPPETS.for_your_information)
-
-
-
-
-
-
-                    s = '.. include:: %sIncludes.txt\n' % ((len(prefixparts) * '../'),)
-                    f2.write(s)
-                    f2.write('.. include:: %s\n\n' % fnameimages)
+                    # f2.write(SNIPPETS.for_your_information)
+                    pathPrefix =  u'../' * len(prefixparts)
+                    u = u'.. include:: %sIncludes.txt\n' % pathPrefix
+                    f2.write(u)
+                    f2.write(u'.. include:: %s\n\n' % fnameimages)
 
                     if len(prefixparts) <= (depth-1):
                         prefix = '-'.join(prefixparts)
