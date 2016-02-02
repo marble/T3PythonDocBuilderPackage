@@ -17,7 +17,7 @@ alphaNumericTable = ''.join([chr(i) if chr(i).lower() in 'abcdefghijklmnopqrstuv
 
 def sectionToLabel(aStr):
     aStr = aStr.strip()
-    aStr = aStr.lower()
+    # aStr = aStr.lower()
     aStr = aStr.encode('ascii','ignore')
     aStr = aStr.translate(alphaNumericTable)
     while '----' in aStr:
