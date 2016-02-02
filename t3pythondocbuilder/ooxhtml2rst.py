@@ -1853,7 +1853,7 @@ def main(f1name, f2name, f3name=None, f4name=None, appendlog=0, taginfo=0, table
                 P.datacollector.collect(msg, 'verbatim')
 
         result = P.datacollector.stop_document('initial')
-        if 1:
+        if 0:
             f2.write(SNIPPETS.for_your_information)
         if 0:
             f2.write(SNIPPETS.define_some_textroles)
