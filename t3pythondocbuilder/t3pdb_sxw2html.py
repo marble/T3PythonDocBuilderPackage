@@ -28,6 +28,7 @@ Example
 
 import os
 import sys
+
 try:
     import PIL
     from PIL import Image
@@ -51,6 +52,7 @@ import codecs
 import copyclean
 import ooxhtml2rst
 import normalize_empty_lines
+import export_inline_images
 import write_sphinx_structure
 import prepend_sections_with_labels
 ## import remove_first_t3fieldlisttable_row
@@ -61,7 +63,7 @@ ospj = os.path.join
 
 NL = '\n'
 
-__version__ = '0.1.0'
+__version__ = '0.2.0'
 
 # leave your name and notes here:
 __history__ = """\
@@ -75,7 +77,7 @@ __history__ = """\
 
 __copyright__ = """\
 
-Copyright (c), 2011-2015, Martin Bless  <martin@mbless.de>
+Copyright (c), since 2011, Martin Bless  <martin@mbless.de>
 
 All Rights Reserved.
 
@@ -104,53 +106,30 @@ def platformIsWindows():
 def platformIsMac():
     return 'darwin' in sys.platform
 
-OOHEADLESS_IS_AVAILABLE = False
-if platformIsLinux():
-    try:
-        import oodocconverter_linux
-        converter = oodocconverter_linux.DocumentConverter()
-        OOHEADLESS_IS_AVAILABLE = True
-    except:
-        OOHEADLESS_IS_AVAILABLE = False
-elif platformIsWindows():
-    import oodocconverter_win
-    OOHEADLESS_IS_AVAILABLE = True
-elif platformIsMac():
-    import oodocconverter_mac
-else:
-    pass
+convert_sxw2html_function = None
 
-def convertsxw2html(srcfile, destfile):
-    if platformIsLinux():
-        if OOHEADLESS_IS_AVAILABLE:
-            done = False
-            try:
-                converter.convert(srcfile, destfile)
-                retCode, msg = 0, 'Ok'
-            except dc.DocumentConversionException, exception:
-                retCode, msg = 2, "ERROR1! " + str(exception)
-            except dc.ErrorCodeIOException, exception:
-                retCode, msg = 2, "ERROR2! " % str(exception)
-            except Exception, msg:
-                retCode, msg = 2, "ERROR9! " + str(msg)
+try:
+    import oodocconverter_linux
+    converter = oodocconverter_linux.DocumentConverter()
+except:
+    converter = None
 
-        else:
-            retCode, msg = (2,
-                            "'OpenOffice headless for Linux' is not "
-                            "available. Cannot convert '%s' to '%s'" %
-                            (srcfile, destfile))
+if converter:
+    def convert_sxw2html_function(srcfile, destfile, converter=converter):
+        try:
+            retCode = converter.convert(srcfile, destfile)
+            retCode, msg = 0, 'Ok'
+        except oodocconverter_linux.DocumentConversionException, exception:
+            retCode, msg = 2, "ERROR1! " + str(exception)
+        except oodocconverter_linux.ErrorCodeIOException, exception:
+            retCode, msg = 2, "ERROR2! " % str(exception)
+        except Exception, msg:
+            retCode, msg = 2, "ERROR9! " + str(msg)
         return retCode, msg
 
-    elif platformIsWindows():
-        retCode, msg = oodocconverter_win.main(srcfile, destfile)
-
-    elif platformIsMac():
-        retCode, msg = oodocconverter_mac.main(srcfile, destfile)
-
-    else:
-        retCode, msg = 1, "There's no converter for platform '%s'" % sys.platform
-
-    return retCode, msg
+if convert_sxw2html_function is None:
+    import oodocconverter_cli
+    convert_sxw2html_function = oodocconverter_cli.main
 
 
 class Namespace(object):
@@ -308,7 +287,7 @@ class Main:
                             "'%s' is a zipfile but not legal in some "
                             "aspects" % self.f1path)
 
-        retCode, msg = convertsxw2html(self.f1path, self.f2path)
+        retCode, msg = convert_sxw2html_function(self.f1path, self.f2path)
         if retCode:
             return retCode, msg
 
@@ -316,27 +295,6 @@ class Main:
             cmd = 'chmod +r ' + ospj(self.safetempdir, '*')
             subprocess.call(cmd, shell=True)
 
-
-        if 1 and "convert *.gif to *.gif.png":
-            L = []
-            dirname = os.path.dirname(self.f2path)
-            for fname in os.listdir(dirname):
-                if fname.lower().startswith('manual_html_') and fname.lower().endswith('.gif'):
-                    L.append(fname)
-            if L:
-                for fname in L:
-                    gifFile = ospj(dirname, fname)
-                    im = PIL.Image.open(gifFile)
-                    pngFile = gifFile + '.png'
-                    im.save(pngFile)
-                f1 = file(self.f2path)
-                data = f1.read()
-                f1.close()
-                for fname in L:
-                    data = data.replace(fname, fname + '.png')
-                f2 = file(self.f2path, "w")
-                f2.write(data)
-                f2.close()
 
         if 1:
             try:
@@ -357,7 +315,6 @@ class Main:
                 retCode, msg = (1,
                                 "Cannot create '%s'" %
                                 self.f2path_from_tidy)
-
 
 
         if 1:
@@ -395,13 +352,36 @@ class Main:
 
 
         if 1:
-            # for each of our newly created *.rst provide a Docutils rendering
-            # errorfilename = 'sxw2html-conversion-error.txt'
-            # self.t3docutils_stylesheet_path
-            # self.usr_bin_python
-            # self.t3rst2html_script
-            # self.safetempdir
+            # for each of our newly created *.rst export inline images
 
+            for f2path_rst in self.rstfilepaths:
+                tempname = f2path_rst[:-3] + 'inline.txt'
+                os.rename(f2path_rst, tempname)
+                export_inline_images.main(tempname, f2path_rst, self.safetempdir)
+
+
+        if 0 and "convert *.gif to *.gif.png":
+            L = []
+            dirname = os.path.dirname(self.f2path)
+            for fname in os.listdir(dirname):
+                if fname.lower().startswith('manual_html_') and fname.lower().endswith('.gif'):
+                    L.append(fname)
+            if L:
+                for fname in L:
+                    gifFile = ospj(dirname, fname)
+                    im = PIL.Image.open(gifFile)
+                    pngFile = gifFile + '.png'
+                    im.save(pngFile)
+                f1 = file(self.f2path)
+                data = f1.read()
+                f1.close()
+                for fname in L:
+                    data = data.replace(fname, fname + '.png')
+                f2 = file(self.f2path, "w")
+                f2.write(data)
+                f2.close()
+
+        if 1:
             for f2path_rst in self.rstfilepaths:
                 normalize_empty_lines.main(f2path_rst, self.f2path_rst_temp, 2)
                 os.remove(f2path_rst)
@@ -409,6 +389,12 @@ class Main:
 
 
         if 1:
+            # for each of our newly created *.rst provide a Docutils rendering
+            # errorfilename = 'sxw2html-conversion-error.txt'
+            # self.t3docutils_stylesheet_path
+            # self.usr_bin_python
+            # self.t3rst2html_script
+            # self.safetempdir
             arg = Namespace()
             arg.pathToTemplate = self.t3docutils_template_path
 
