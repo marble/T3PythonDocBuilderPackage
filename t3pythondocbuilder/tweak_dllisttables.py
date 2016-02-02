@@ -1,5 +1,5 @@
 # tweak_dllisttables.py
-# mb, 2012-05-21, 2013-05-29, 2013-06-11
+# mb, 2012-05-21, 2013-06-11, 2016-01-30
 
 import codecs
 import os
@@ -16,89 +16,102 @@ from constants import SECTION_UNDERLINERS
 
 CURRENT_UNDERLINER = '*'
 
-def tweakTableRow(lines):
-    indentLevel = lines[0].find('..')
-    indentBlanks3 = ' ' * (indentLevel + 3)
-    indentBlanks9 = ' ' * (indentLevel + 9)
+def tweakTableRow(lines0):
+    ok = True
 
-    # check 1: Do we have a stupid header row?
-    rowIsMeaningful = False
-    dt = None
-    dd = None
-    for i, line in enumerate(lines):
-        if i==0 or line.strip()=='':
-            continue
-        line = line.rstrip()
-        if dt is None:
-            m = re.match(indentBlanks3 + '(.+)', line)
-            if m:
-                dt = m.group(1).lower().replace(':','')
-            else:
-                rowIsMeaningful = True
-        elif dd is None:
-            m = re.match(indentBlanks9 + '(.+)', line)
-            if m:
-                dd = m.group(1).lower().replace(':','')
-                if dt == dd:
-                    dt = None
-                    dd = None
-            else:
-                rowIsMeaningful = True
-        else:
-            rowIsMeaningful = True
-        if rowIsMeaningful:
-            break
-    else:
-        lines = []
-        return lines
-
+    # make a copy
+    lines = [line.rstrip() for line in lines0]
 
     # check 2, manipulation: insert label and header
     p = SECTION_UNDERLINERS.index(CURRENT_UNDERLINER)
     underliner = SECTION_UNDERLINERS[p+1]
 
-    if 0:
-        print
-        for line in lines:
-            print repr(line.rstrip())
-        x = 10
+    # remove line '.. container:: table-row'
+    del lines[0]
 
-    dt = None
-    dd = None
-    property = ''
-    for i, line in enumerate(lines):
-        if i==0 or line.strip()=='':
-            continue
-        line = line.rstrip()
-        if dt is None:
-            m = re.match(indentBlanks3 + '(.+)', line)
-            if m:
-                dt = True
+    # make sure all lines with content are indented by 3 at least
+    for line in lines:
+        if line[:3].strip():
+            ok = False
+            break
+
+    lines = [line[3:] for line in lines]
+
+    result = []
+    # keep only cells with content
+    state = 'before cell'
+    istart = 0
+    hasContent = False
+    for i in range(len(lines)):
+        line = lines[i]
+        if line:
+            if line[0] == ' ':
+                hasContent = True
             else:
+                if hasContent:
+                    for ii in range(istart, i):
+                        result.append(lines[ii])
+                hasContent = False
+                istart = i
+
+    # save the last one
+    if hasContent:
+        for ii in range(istart, len(lines)):
+            result.append(lines[ii])
+
+    lines = result
+    if ok:
+        dt = None
+        dd = None
+        property = ''
+        rowIsMeaningful = False
+        for i in range(len(lines)):
+            line = lines[i]
+            if not line:
+                continue
+            if line[0] != ' ':
+                dt = line
+                dd = None
+                lines[i] = u':aspect:`%s`\n' % line
+            else:
+                if not dd is None:
+                    # more than one dd line
+                    rowIsMeaningful = True
+                dd = line.strip()
+                if not property:
+                    property = dd
+            if dt is None and dd is not None:
+                ok = False
                 break
-        elif dd is None:
-            m = re.match(indentBlanks9 + '(.+)', line)
-            if m:
-                property = m.group(1)
-            break
-        else:
-            break
+            if dt and dd and not rowIsMeaningful:
+                if dt.rstrip(':') != dd.rstrip(':'):
+                    rowIsMeaningful = True
 
-    if not property:
-        property = '((Unknown Property))'
+        if not rowIsMeaningful:
+            # remove this row
+            lines = []
+            return lines
 
-    if property:
-        label = prepend_sections_with_labels.sectionToLabel(property)
-        s = \
-          '\n'\
-          '.. _%s:\n'\
-          '\n'\
-          '%s\n'\
-          '%s\n'\
-          '\n' % (label, property, underliner * len(property))
-        lines.insert(0, s)
+        if ok and not property:
+            property = '((Unknown Property))'
 
+        if ok and property:
+            label = prepend_sections_with_labels.sectionToLabel(property)
+            s = (
+              '\n'
+              '\n'
+              '.. _%s:\n'
+              '\n'
+              '%s\n'
+              '%s\n'
+              '\n' % (label, property, underliner * len(property))
+            )
+            lines.insert(0, s)
+
+    if not ok:
+        lines = [line.rstrip() for line in lines0]
     return lines
+
 
 
 def processRstFile(f1path):
@@ -114,39 +127,51 @@ def processRstFile(f1path):
     for line in f1:
 
         if withinTable:
+
+            if beginOfTableIndent > 0:
+                line = line[beginOfTableIndent:]
+
             if state == 'before table-row':
-                if line.strip().startswith('.. container:: table-row'):
+                containerTableRowIndent = line.find(u'.. container:: table-row')
+                if containerTableRowIndent < 0:
+                    f2.write(line)
+                else:
                     state = 'before first cell'
                     lines.append(line)
-                else:
-                    f2.write(line)
             elif state == 'before first cell':
-                if not line.strip():
-                    lines.append(line)
-                else:
-                    m = re.match('   (.*)', line[indentLen:])
-                    if m:
-                        state = 'within row'
-                        property = m.group(1)
-                        lines.append(line)
+                if line.strip():
+                    # line has contents
+                    state = 'within row'
+                lines.append(line)
             elif state == 'within row':
                 if not line.strip():
+                    # line is white space
                     lines.append(line)
                 elif line[0:3] == '   ':
+                    # line has content and is still indented
                     lines.append(line)
                 else:
+                    # line is not indented. Something happens
                     state = 'at end of row'
+                    # process collected lines
                     lines = tweakTableRow(lines)
+                    # write processed lines
                     for aline in lines:
                         f2.write(aline)
+                        f2.write('\n')
+                    # empty our linebuffer
                     lines = []
+                    # end of table?
                     if line.strip().startswith('.. ###### END~OF~TABLE ######'):
                         withinTable = False
                         f2.write(line)
+                    # another row?
                     elif line.strip().startswith('.. container:: table-row'):
+                        containerTableRowIndent = line.find(u'.. container:: table-row')
                         state = 'before first cell'
                         lines.append(line)
                     else:
+                        # should not happen. Assume end of table
                         withinTable = False
                         f2.write(line)
         else:
@@ -167,10 +192,9 @@ def processRstFile(f1path):
             if line.strip().startswith('.. ### BEGIN~OF~TABLE ###'):
                 withinTable = True
                 state = 'before table-row'
-                indentLen = line.find('.. ### BEGIN~OF~TABLE ###')
+                beginOfTableIndent = line.find('.. ### BEGIN~OF~TABLE ###')
                 lines = []
-                if 0:
-                    print f1path
+
             f2.write(line)
 
 
