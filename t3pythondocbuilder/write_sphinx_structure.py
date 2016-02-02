@@ -228,9 +228,9 @@ class DocumentationMaker:
                 if tte:
                     s = (
                         '.. toctree::\n'
-                        '   :maxdepth: 5\n'
-                        '   :titlesonly:\n'
-                        '   :glob:\n'
+                        #'   :maxdepth: 5\n'
+                        #'   :titlesonly:\n'
+                        #'   :glob:\n'
                         '\n' )
                     f2.write(s)
                     for e in tte:
