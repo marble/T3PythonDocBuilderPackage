@@ -60,7 +60,7 @@ def main(f1name, f2name):
            p1 = data.find(pattern, p1 + 1)
     positions.sort()
 
-    if 1 and 'debug':
+    if 0 and 'debug':
         from pprint import pprint
         if 1:
             for a,b in positions:
